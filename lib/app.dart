@@ -1,3 +1,4 @@
+import 'package:desafio_maba/features/auth/data/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
@@ -41,6 +42,9 @@ class _AppMessageListener extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isLoggedIn =
+        ref.watch(firebaseAuthProvider).currentUser != null;
+
     ref.listen<UiMessage?>(
       authControllerProvider.select((state) => state.uiMessage),
       (previous, next) {
@@ -50,41 +54,51 @@ class _AppMessageListener extends ConsumerWidget {
       },
     );
 
-    ref.listen<UiMessage?>(
-      fastingControllerProvider.select((state) => state.uiMessage),
-      (previous, next) {
-        if (next == null) return;
-        _showMessage(context, next);
-        ref.read(fastingControllerProvider.notifier).consumeMessage();
-      },
-    );
+    if (isLoggedIn) {
+      ref.listen<UiMessage?>(
+        fastingControllerProvider.select((state) => state.uiMessage),
+        (previous, next) {
+          if (next == null) return;
+          _showMessage(context, next);
+          ref
+              .read(fastingControllerProvider.notifier)
+              .consumeMessage();
+        },
+      );
 
-    ref.listen<UiMessage?>(
-      mealsControllerProvider.select((state) => state.uiMessage),
-      (previous, next) {
-        if (next == null) return;
-        _showMessage(context, next);
-        ref.read(mealsControllerProvider.notifier).consumeMessage();
-      },
-    );
+      ref.listen<UiMessage?>(
+        mealsControllerProvider.select((state) => state.uiMessage),
+        (previous, next) {
+          if (next == null) return;
+          _showMessage(context, next);
+          ref.read(mealsControllerProvider.notifier).consumeMessage();
+        },
+      );
 
-    ref.listen<UiMessage?>(
-      historyControllerProvider.select((state) => state.uiMessage),
-      (previous, next) {
-        if (next == null) return;
-        _showMessage(context, next);
-        ref.read(historyControllerProvider.notifier).consumeMessage();
-      },
-    );
+      ref.listen<UiMessage?>(
+        historyControllerProvider.select((state) => state.uiMessage),
+        (previous, next) {
+          if (next == null) return;
+          _showMessage(context, next);
+          ref
+              .read(historyControllerProvider.notifier)
+              .consumeMessage();
+        },
+      );
 
-    ref.listen<UiMessage?>(
-      dashboardControllerProvider.select((state) => state.uiMessage),
-      (previous, next) {
-        if (next == null) return;
-        _showMessage(context, next);
-        ref.read(dashboardControllerProvider.notifier).consumeMessage();
-      },
-    );
+      ref.listen<UiMessage?>(
+        dashboardControllerProvider.select(
+          (state) => state.uiMessage,
+        ),
+        (previous, next) {
+          if (next == null) return;
+          _showMessage(context, next);
+          ref
+              .read(dashboardControllerProvider.notifier)
+              .consumeMessage();
+        },
+      );
+    }
 
     return child;
   }

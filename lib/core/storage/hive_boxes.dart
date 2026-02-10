@@ -55,13 +55,17 @@ class HiveBoxes {
           box.values.length;
         } catch (_) {
           await box.close();
-          await Hive.deleteBoxFromDisk(name);
+          try {
+            await Hive.deleteBoxFromDisk(name);
+          } catch (_) {}
           return Hive.openBox<T>(name);
         }
       }
       return box;
     } catch (_) {
-      await Hive.deleteBoxFromDisk(name);
+      try {
+        await Hive.deleteBoxFromDisk(name);
+      } catch (_) {}
       return Hive.openBox<T>(name);
     }
   }

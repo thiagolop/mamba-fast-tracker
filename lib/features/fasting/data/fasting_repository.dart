@@ -12,14 +12,21 @@ class FastingRepository {
 
   Future<List<FastingProtocol>> listProtocols() async {
     await _seedProtocolsIfNeeded();
-    final items = HiveBoxes.fastingProtocols.values.toList();
+    var items = HiveBoxes.fastingProtocols.values.toList();
+    if (items.isEmpty) {
+      await _seedProtocolsIfNeeded(force: true);
+      items = HiveBoxes.fastingProtocols.values.toList();
+    }
     items.sort((a, b) => a.fastingMinutes.compareTo(b.fastingMinutes));
     return items;
   }
 
-  Future<void> _seedProtocolsIfNeeded() async {
-    if (HiveBoxes.fastingProtocols.isNotEmpty) {
+  Future<void> _seedProtocolsIfNeeded({bool force = false}) async {
+    if (!force && HiveBoxes.fastingProtocols.isNotEmpty) {
       return;
+    }
+    if (force) {
+      await HiveBoxes.fastingProtocols.clear();
     }
     for (final protocol in FastingProtocol.defaults) {
       await HiveBoxes.fastingProtocols.put(protocol.id, protocol);
