@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import 'core/router/app_router.dart';
+import 'core/theme/app_theme.dart';
+import 'core/ui/snackbar_helper.dart';
+import 'core/ui/ui_message.dart';
+import 'features/auth/presentation/controllers/auth_controller.dart';
+import 'features/fasting/presentation/controllers/fasting_controller.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -10,41 +13,53 @@ class App extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final baseTextTheme = ThemeData.light().textTheme;
 
     return MaterialApp.router(
       title: 'Mamba Fast Tracker',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        textTheme: GoogleFonts.manropeTextTheme(baseTextTheme),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
-        ),
-      ),
+      theme: AppTheme.light(),
       routerConfig: router,
       builder: (context, child) {
-        return child ?? const SizedBox.shrink();
+        return _AppMessageListener(
+          child: child ?? const SizedBox.shrink(),
+        );
       },
+    );
+  }
+}
+
+class _AppMessageListener extends ConsumerWidget {
+  const _AppMessageListener({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<UiMessage?>(
+      authControllerProvider.select((state) => state.uiMessage),
+      (previous, next) {
+        if (next == null) return;
+        _showMessage(context, next);
+        ref.read(authControllerProvider.notifier).consumeMessage();
+      },
+    );
+
+    ref.listen<UiMessage?>(
+      fastingControllerProvider.select((state) => state.uiMessage),
+      (previous, next) {
+        if (next == null) return;
+        _showMessage(context, next);
+        ref.read(fastingControllerProvider.notifier).consumeMessage();
+      },
+    );
+
+    return child;
+  }
+
+  void _showMessage(BuildContext context, UiMessage message) {
+    showAppSnack(
+      context,
+      message.text,
+      isError: message.type == UiMessageType.error,
     );
   }
 }

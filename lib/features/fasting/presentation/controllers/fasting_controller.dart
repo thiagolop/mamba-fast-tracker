@@ -4,14 +4,16 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/notifications/notifications_service.dart';
-import '../../../core/time/clock.dart';
-import '../../auth/data/auth_repository.dart';
-import '../data/fasting_repository.dart';
-import '../domain/fasting_engine.dart';
-import '../domain/fasting_protocol.dart';
-import '../domain/fasting_session.dart';
-import '../domain/fasting_status.dart';
+import '../../../../core/notifications/notifications_service.dart';
+import '../../../../core/time/clock.dart';
+import '../../../../core/ui/ui_message.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../data/fasting_repository.dart';
+import '../../domain/fasting_engine.dart';
+import '../../domain/fasting_protocol.dart';
+import '../../domain/fasting_session.dart';
+import '../../domain/fasting_status.dart';
+import '../fasting_strings.dart';
 
 class FastingUiState extends Equatable {
   const FastingUiState({
@@ -20,7 +22,8 @@ class FastingUiState extends Equatable {
     required this.status,
     this.selectedProtocol,
     this.session,
-    this.errorMessage,
+    this.screenError,
+    this.uiMessage,
   });
 
   final bool isLoading;
@@ -28,7 +31,8 @@ class FastingUiState extends Equatable {
   final FastingProtocol? selectedProtocol;
   final FastingSession? session;
   final FastingStatus status;
-  final String? errorMessage;
+  final String? screenError;
+  final UiMessage? uiMessage;
 
   factory FastingUiState.initial() {
     return FastingUiState(
@@ -38,13 +42,63 @@ class FastingUiState extends Equatable {
     );
   }
 
+  bool get isActive => status.isActive;
+
+  String get statusLabel {
+    switch (status.state) {
+      case FastingState.inactive:
+        return FastingStrings.inactive;
+      case FastingState.fasting:
+        return FastingStrings.fasting;
+      case FastingState.feeding:
+        return FastingStrings.feeding;
+      case FastingState.completed:
+        return FastingStrings.completed;
+    }
+  }
+
+  String get protocolLabel {
+    final protocol = selectedProtocol;
+    if (protocol == null) {
+      return FastingStrings.selectProtocolPlaceholder;
+    }
+    final hours = protocol.fastingMinutes ~/ 60;
+    return '${protocol.name} • ${hours}h';
+  }
+
+  String get elapsedLabel => _formatDuration(status.elapsed);
+
+  String get remainingLabel => _formatDuration(status.remaining);
+
+  double get progress {
+    final total = selectedProtocol?.fastingDuration ?? Duration.zero;
+    final totalSeconds = total.inSeconds;
+    if (totalSeconds == 0) return 0.0;
+    return (status.elapsed.inSeconds / totalSeconds).clamp(0.0, 1.0);
+  }
+
+  bool get canChangeProtocol {
+    if (isLoading) return false;
+    final current = session;
+    if (current == null) return true;
+    return current.status == FastingSessionStatus.ended;
+  }
+
+  String get protocolHelperText => FastingStrings.protocolHelper;
+
+  String get primaryButtonLabel =>
+      isActive ? FastingStrings.endFasting : FastingStrings.startFasting;
+
+  bool get primaryButtonIsDestructive => isActive;
+
   FastingUiState copyWith({
     bool? isLoading,
     List<FastingProtocol>? protocols,
     FastingProtocol? selectedProtocol,
     FastingSession? session,
     FastingStatus? status,
-    String? errorMessage,
+    String? screenError,
+    UiMessage? uiMessage,
   }) {
     return FastingUiState(
       isLoading: isLoading ?? this.isLoading,
@@ -52,19 +106,31 @@ class FastingUiState extends Equatable {
       selectedProtocol: selectedProtocol ?? this.selectedProtocol,
       session: session ?? this.session,
       status: status ?? this.status,
-      errorMessage: errorMessage,
+      screenError: screenError,
+      uiMessage: uiMessage,
     );
   }
 
   @override
   List<Object?> get props => [
-    isLoading,
-    protocols,
-    selectedProtocol,
-    session,
-    status,
-    errorMessage,
-  ];
+        isLoading,
+        protocols,
+        selectedProtocol,
+        session,
+        status,
+        screenError,
+        uiMessage,
+      ];
+
+  static String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    final h = hours.toString().padLeft(2, '0');
+    final m = minutes.toString().padLeft(2, '0');
+    final s = seconds.toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
 }
 
 final fastingEngineProvider = Provider<FastingEngine>(
@@ -81,8 +147,7 @@ class FastingController extends Notifier<FastingUiState> {
   Timer? _ticker;
   final Uuid _uuid = const Uuid();
 
-  FastingRepository get _repository =>
-      ref.read(fastingRepositoryProvider);
+  FastingRepository get _repository => ref.read(fastingRepositoryProvider);
   FastingEngine get _engine => ref.read(fastingEngineProvider);
   Clock get _clock => ref.read(clockProvider);
   NotificationsService get _notifications =>
@@ -99,7 +164,7 @@ class FastingController extends Notifier<FastingUiState> {
 
   Future<void> _load() async {
     try {
-      state = state.copyWith(isLoading: true, errorMessage: null);
+      state = state.copyWith(isLoading: true, screenError: null);
 
       final protocols = await _repository.listProtocols();
       final selectedProtocol = await _repository.getSelectedProtocol(
@@ -108,8 +173,7 @@ class FastingController extends Notifier<FastingUiState> {
       var session = await _repository.getActiveSession(_userId);
       final now = _clock.now();
 
-      if (session != null &&
-          session.remaining(now) == Duration.zero) {
+      if (session != null && session.remaining(now) == Duration.zero) {
         session = await _completeSession(session, now, notify: true);
       }
 
@@ -125,34 +189,23 @@ class FastingController extends Notifier<FastingUiState> {
         selectedProtocol: selectedProtocol,
         session: session,
         status: status,
+        screenError: null,
       );
 
       await _syncNotifications(session, now);
       _syncTicker(session);
-    } catch (error) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: error.toString(),
-      );
+    } catch (_) {
+      _setScreenError(FastingStrings.errorGeneric);
     }
   }
 
-  // =========================================================
-  // ✅ FIX 1: manter compatibilidade com a UI (aliases)
-  // =========================================================
   Future<void> startSession() => start();
   Future<void> stopSession() => end();
 
-  // =========================================================
-  // ✅ FIX 2: selectProtocol (usado pela UI)
-  // =========================================================
   Future<void> selectProtocol(String protocolId) async {
-    // se existir uma sessão ativa, bloqueia troca de protocolo
     final session = state.session;
     if (session != null && session.status != FastingSessionStatus.ended) {
-      state = state.copyWith(
-        errorMessage: 'Finalize o jejum antes de trocar',
-      );
+      _emitError(FastingStrings.errorChangeProtocol);
       return;
     }
 
@@ -170,28 +223,24 @@ class FastingController extends Notifier<FastingUiState> {
       state = state.copyWith(
         selectedProtocol: selected,
         status: status,
-        errorMessage: null,
+        screenError: null,
+        uiMessage: null,
       );
-    } catch (error) {
-      state = state.copyWith(errorMessage: error.toString());
+    } catch (_) {
+      _emitError(FastingStrings.errorGeneric);
     }
   }
 
-  // =========================================================
-  // Core actions
-  // =========================================================
   Future<void> start() async {
     final protocol = state.selectedProtocol;
     if (protocol == null) {
-      state = state.copyWith(errorMessage: 'Selecione um protocolo');
+      _emitError(FastingStrings.errorSelectProtocol);
       return;
     }
 
     final existing = state.session;
     if (existing != null && existing.status == FastingSessionStatus.running) {
-      state = state.copyWith(
-        errorMessage: 'Já existe um jejum ativo',
-      );
+      _emitError(FastingStrings.errorActiveSession);
       return;
     }
 
@@ -207,8 +256,8 @@ class FastingController extends Notifier<FastingUiState> {
 
     await _notifications.showNow(
       id: _notificationIdForSession(session.id),
-      title: 'Jejum iniciado',
-      body: 'Seu jejum começou agora.',
+      title: FastingStrings.notifStartedTitle,
+      body: FastingStrings.notifStartedBody,
     );
     await _scheduleEndNotification(session, now);
 
@@ -219,14 +268,13 @@ class FastingController extends Notifier<FastingUiState> {
         session: session,
         protocol: protocol,
       ),
-      errorMessage: null,
+      screenError: null,
+      uiMessage: null,
     );
 
     _syncTicker(session);
   }
 
-  // Se você ainda não implementou pause/resume, pode deixar assim por enquanto.
-  // (Depois a gente adiciona.)
   Future<void> end() async {
     final session = state.session;
     final protocol = state.selectedProtocol;
@@ -241,8 +289,8 @@ class FastingController extends Notifier<FastingUiState> {
 
     await _notifications.showNow(
       id: _notificationIdForSession(ended.id),
-      title: 'Jejum encerrado',
-      body: 'Seu jejum foi finalizado.',
+      title: FastingStrings.notifEndedTitle,
+      body: FastingStrings.notifEndedBody,
     );
 
     state = state.copyWith(
@@ -252,19 +300,18 @@ class FastingController extends Notifier<FastingUiState> {
         session: ended,
         protocol: protocol,
       ),
-      errorMessage: null,
+      screenError: null,
+      uiMessage: null,
     );
 
     _syncTicker(ended);
   }
 
-  // =========================================================
-  // helpers
-  // =========================================================
-  Future<void> _syncNotifications(
-    FastingSession? session,
-    DateTime now,
-  ) async {
+  void consumeMessage() {
+    state = state.copyWith(uiMessage: null);
+  }
+
+  Future<void> _syncNotifications(FastingSession? session, DateTime now) async {
     if (session == null) return;
 
     if (session.status == FastingSessionStatus.running) {
@@ -296,8 +343,8 @@ class FastingController extends Notifier<FastingUiState> {
     await _notifications.scheduleFastingEnd(
       id: _notificationIdForSession(session.id),
       when: now.add(remaining),
-      title: 'Jejum concluído',
-      body: 'Sua janela de jejum terminou.',
+      title: FastingStrings.notifCompletedTitle,
+      body: FastingStrings.notifCompletedBodyAlt,
     );
   }
 
@@ -372,7 +419,6 @@ class FastingController extends Notifier<FastingUiState> {
   }
 
   Future<void> _refresh() async {
-    // Mantém simples por enquanto (depois implementamos o status real)
     final session = state.session;
     final protocol = state.selectedProtocol;
     if (session == null || protocol == null) {
@@ -426,15 +472,31 @@ class FastingController extends Notifier<FastingUiState> {
     if (notify) {
       await _notifications.showNow(
         id: _notificationIdForSession(ended.id),
-        title: 'Jejum concluído',
-        body: 'Você terminou o jejum.',
+        title: FastingStrings.notifCompletedTitle,
+        body: FastingStrings.notifCompletedBody,
       );
     }
     return ended;
+  }
+
+  void _emitError(String message) {
+    state = state.copyWith(
+      isLoading: false,
+      screenError: null,
+      uiMessage: UiMessage(type: UiMessageType.error, text: message),
+    );
+  }
+
+  void _setScreenError(String message) {
+    state = state.copyWith(
+      isLoading: false,
+      screenError: message,
+      uiMessage: null,
+    );
   }
 }
 
 final fastingControllerProvider =
     NotifierProvider<FastingController, FastingUiState>(
-      FastingController.new,
-    );
+  FastingController.new,
+);

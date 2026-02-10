@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/data/auth_repository.dart';
-import '../../features/auth/presentation/login_page.dart';
-import '../../features/dashboard/presentation/dashboard_page.dart';
-import '../../features/fasting/presentation/fasting_page.dart';
-import '../../features/meals/presentation/meals_page.dart';
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../../features/fasting/presentation/pages/fasting_page.dart';
+import '../../features/meals/presentation/pages/meals_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(firebaseAuthProvider);

@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/meals_repository.dart';
-import '../domain/meal_entry.dart';
+import '../../data/meals_repository.dart';
+import '../../domain/meal_entry.dart';
 
 class MealsState extends Equatable {
   const MealsState({
