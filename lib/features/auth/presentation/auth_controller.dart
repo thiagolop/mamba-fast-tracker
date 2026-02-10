@@ -1,66 +1,133 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/app_failure.dart';
 import '../data/auth_repository.dart';
 
-class AuthState extends Equatable {
-  const AuthState({this.isLoading = false, this.errorMessage});
+class AuthUiState extends Equatable {
+  const AuthUiState({
+    required this.isLoading,
+    required this.canSubmit,
+    this.errorMessage,
+    this.infoMessage,
+  });
 
   final bool isLoading;
+  final bool canSubmit;
   final String? errorMessage;
+  final String? infoMessage;
 
-  AuthState copyWith({bool? isLoading, String? errorMessage}) {
-    return AuthState(
+  factory AuthUiState.initial() {
+    return const AuthUiState(
+      isLoading: false,
+      canSubmit: false,
+    );
+  }
+
+  AuthUiState copyWith({
+    bool? isLoading,
+    bool? canSubmit,
+    String? errorMessage,
+    String? infoMessage,
+  }) {
+    return AuthUiState(
       isLoading: isLoading ?? this.isLoading,
+      canSubmit: canSubmit ?? this.canSubmit,
       errorMessage: errorMessage,
+      infoMessage: infoMessage,
     );
   }
 
   @override
-  List<Object?> get props => [isLoading, errorMessage];
+  List<Object?> get props => [
+        isLoading,
+        canSubmit,
+        errorMessage,
+        infoMessage,
+      ];
 }
 
-class AuthController extends Notifier<AuthState> {
-  @override
-  AuthState build() => const AuthState();
+class AuthController extends Notifier<AuthUiState> {
+  Timer? _infoTimer;
+  String _email = '';
+  String _password = '';
 
   AuthRepository get _repository => ref.read(authRepositoryProvider);
 
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+  @override
+  AuthUiState build() {
+    ref.onDispose(() => _infoTimer?.cancel());
+    return AuthUiState.initial();
+  }
+
+  void updateCredentials({required String email, required String password}) {
+    _email = email.trim();
+    _password = password.trim();
+    final canSubmit = _email.isNotEmpty && _password.length >= 6;
+    state = state.copyWith(canSubmit: canSubmit);
+  }
+
+  Future<void> signIn({required String email, required String password}) async {
+    final emailTrim = email.trim();
+    final passwordTrim = password.trim();
+
+    final validation = _validate(emailTrim, passwordTrim);
+    if (validation != null) {
+      state = state.copyWith(
+        errorMessage: validation,
+        infoMessage: null,
+        isLoading: false,
+      );
+      return;
+    }
+
+    state = state.copyWith(isLoading: true, errorMessage: null, infoMessage: null);
     try {
       await _repository.signInWithEmail(
-        email: email,
-        password: password,
+        email: emailTrim,
+        password: passwordTrim,
       );
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(isLoading: false, errorMessage: null);
+    } on FirebaseAuthException catch (error) {
+      final failure = AppFailure.fromFirebaseAuth(error);
+      state = state.copyWith(isLoading: false, errorMessage: failure.message);
     } catch (error) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: error.toString(),
-      );
+      final failure = AppFailure.unknown(error);
+      state = state.copyWith(isLoading: false, errorMessage: failure.message);
     }
   }
 
-  Future<void> register({
-    required String email,
-    required String password,
-  }) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+  Future<void> signUp({required String email, required String password}) async {
+    final emailTrim = email.trim();
+    final passwordTrim = password.trim();
+
+    final validation = _validate(emailTrim, passwordTrim);
+    if (validation != null) {
+      state = state.copyWith(
+        errorMessage: validation,
+        infoMessage: null,
+        isLoading: false,
+      );
+      return;
+    }
+
+    state = state.copyWith(isLoading: true, errorMessage: null, infoMessage: null);
     try {
       await _repository.registerWithEmail(
-        email: email,
-        password: password,
+        email: emailTrim,
+        password: passwordTrim,
       );
-      state = state.copyWith(isLoading: false);
+      _setInfoMessage('Conta criada com sucesso.');
+      state = state.copyWith(isLoading: false, errorMessage: null);
+    } on FirebaseAuthException catch (error) {
+      final failure = AppFailure.fromFirebaseAuth(error);
+      state = state.copyWith(isLoading: false, errorMessage: failure.message);
     } catch (error) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: error.toString(),
-      );
+      final failure = AppFailure.unknown(error);
+      state = state.copyWith(isLoading: false, errorMessage: failure.message);
     }
   }
 
@@ -68,12 +135,24 @@ class AuthController extends Notifier<AuthState> {
     await _repository.signOut();
   }
 
-  void clearError() {
-    if (state.errorMessage != null) {
-      state = state.copyWith(errorMessage: null);
+  String? _validate(String email, String password) {
+    if (email.isEmpty || password.isEmpty) {
+      return 'Informe e-mail e senha.';
     }
+    if (password.length < 6) {
+      return 'A senha deve ter pelo menos 6 caracteres.';
+    }
+    return null;
+  }
+
+  void _setInfoMessage(String message) {
+    _infoTimer?.cancel();
+    state = state.copyWith(infoMessage: message);
+    _infoTimer = Timer(const Duration(seconds: 3), () {
+      state = state.copyWith(infoMessage: null);
+    });
   }
 }
 
 final authControllerProvider =
-    NotifierProvider<AuthController, AuthState>(AuthController.new);
+    NotifierProvider<AuthController, AuthUiState>(AuthController.new);
