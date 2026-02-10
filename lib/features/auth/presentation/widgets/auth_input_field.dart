@@ -33,7 +33,7 @@ class AuthInputField extends StatelessWidget {
         boxShadow: focusNode.hasFocus
             ? [
                 BoxShadow(
-                  color: colorScheme.primary.withOpacity(0.15),
+                  color: colorScheme.primary.withAlpha(0x26),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),

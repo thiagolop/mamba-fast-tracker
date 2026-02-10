@@ -5,7 +5,10 @@ import 'core/theme/app_theme.dart';
 import 'core/ui/snackbar_helper.dart';
 import 'core/ui/ui_message.dart';
 import 'features/auth/presentation/controllers/auth_controller.dart';
+import 'features/dashboard/presentation/controllers/dashboard_controller.dart';
 import 'features/fasting/presentation/controllers/fasting_controller.dart';
+import 'features/history/presentation/controllers/history_controller.dart';
+import 'features/meals/presentation/controllers/meals_controller.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -49,6 +52,33 @@ class _AppMessageListener extends ConsumerWidget {
         if (next == null) return;
         _showMessage(context, next);
         ref.read(fastingControllerProvider.notifier).consumeMessage();
+      },
+    );
+
+    ref.listen<UiMessage?>(
+      mealsControllerProvider.select((state) => state.uiMessage),
+      (previous, next) {
+        if (next == null) return;
+        _showMessage(context, next);
+        ref.read(mealsControllerProvider.notifier).consumeMessage();
+      },
+    );
+
+    ref.listen<UiMessage?>(
+      historyControllerProvider.select((state) => state.uiMessage),
+      (previous, next) {
+        if (next == null) return;
+        _showMessage(context, next);
+        ref.read(historyControllerProvider.notifier).consumeMessage();
+      },
+    );
+
+    ref.listen<UiMessage?>(
+      dashboardControllerProvider.select((state) => state.uiMessage),
+      (previous, next) {
+        if (next == null) return;
+        _showMessage(context, next);
+        ref.read(dashboardControllerProvider.notifier).consumeMessage();
       },
     );
 

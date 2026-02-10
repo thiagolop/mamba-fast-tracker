@@ -1,16 +1,77 @@
-# desafio_maba
+# Mamba Fast Tracker
 
-A new Flutter project.
+App Flutter focado em controle de jejum intermitente e calorias, com autenticação, persistência local e notificações.
 
-## Getting Started
+## Como rodar o projeto
+1. Instale o Flutter (SDK >= 3.10) e configure o ambiente.
+2. Configure o Firebase:
+   - Rode `flutterfire configure` para gerar `lib/firebase_options.dart`.
+3. Instale as dependências:
+   - `flutter pub get`
+4. Execute:
+   - `flutter run`
 
-This project is a starting point for a Flutter application.
+Notas:
+- iOS: garanta `iOS Deployment Target >= 15.0` e rode `cd ios && pod install` após configurar o Firebase.
 
-A few resources to get you started if this is your first Flutter project:
+## Stack escolhida
+- Flutter (Material 3)
+- Firebase Auth (email/senha)
+- Hive CE (persistência local)
+- Riverpod (Notifier/Provider)
+- GoRouter (navegação)
+- flutter_local_notifications + timezone
+- fl_chart (gráficos)
+- Google Fonts (tipografia)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Arquitetura utilizada
+Estrutura por feature + core compartilhado:
+- `lib/core/`: storage, router, theme, time, notifications, ui messages
+- `lib/features/auth/`: autenticação
+- `lib/features/fasting/`: jejum (domínio + engine + controller)
+- `lib/features/meals/`: refeições (CRUD local)
+- `lib/features/dashboard/`: resumo diário + gráfico semanal
+- `lib/features/history/`: histórico por dia
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Princípios:
+- UI “burra” (apenas renderiza estado e dispara ações)
+- Controllers concentram regras e formatos prontos para a UI
+- Persistência isolada em repositories
+
+## Decisões técnicas
+- Jejum baseado em timestamps persistidos (sem contagem em memória).
+- Persistência local com Hive, key por `userId` para separar dados.
+- Cálculo de métricas (calorias, jejum diário, progresso) centralizado nos controllers.
+- Mensageria de UI unificada via `UiMessage` e listener global.
+- Fallbacks de leitura em adapters para evitar quebra em dados antigos.
+
+## Bibliotecas utilizadas
+Principais dependências do projeto:
+- `firebase_core`, `firebase_auth`, `firebase_messaging`
+- `hive_ce`, `hive_ce_flutter`
+- `flutter_local_notifications`, `timezone`
+- `flutter_riverpod`
+- `go_router`
+- `fl_chart`
+- `google_fonts`
+- `equatable`, `uuid`, `intl`
+
+## Trade-offs considerados
+- Gráfico semanal usa calorias (mais direto) ao invés de tempo de jejum.
+- Cálculo de jejum diário considera a interseção da sessão com o dia; sem histórico remoto.
+- Persistência local (sem sync cloud) para simplificar o MVP.
+- UI simplificada, priorizando clareza e legibilidade.
+
+## O que melhoraria com mais tempo
+- Testes de unidade e integração (controllers, repositories, router).
+- Sync opcional com backend (cloud).
+- Metas configuráveis pelo usuário (calorias/jejum).
+- Melhorias de acessibilidade e estados offline.
+- Analytics/telemetria para insights de uso.
+
+## Tempo gasto no desafio
+- **Preencher**: `___ horas`
+
+## Link para executar o projeto
+- https://docs.flutter.dev/get-started/install
+- https://docs.flutter.dev/cookbook/installation/run

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../controllers/fasting_controller.dart';
@@ -36,6 +37,11 @@ class _FastingPageState extends ConsumerState<FastingPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(FastingStrings.title),
+        leading: IconButton(
+          onPressed: () => context.go('/dashboard'),
+          icon: const Icon(Icons.home_outlined),
+          tooltip: FastingStrings.goHome,
+        ),
         actions: [
           IconButton(
             onPressed: () =>
@@ -91,6 +97,12 @@ class _FastingPageState extends ConsumerState<FastingPage> {
                     const SizedBox(height: 24),
                     Center(
                       child: ProgressRing(progress: state.progress),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => context.push('/meals'),
+                      icon: const Icon(Icons.restaurant_outlined),
+                      label: const Text(FastingStrings.addMeal),
                     ),
                   ],
                 ),

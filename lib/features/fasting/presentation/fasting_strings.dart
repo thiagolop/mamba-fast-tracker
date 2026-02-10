@@ -16,6 +16,8 @@ class FastingStrings {
   static const startFasting = 'Iniciar jejum';
   static const endFasting = 'Encerrar jejum';
   static const changeProtocol = 'Trocar protocolo';
+  static const addMeal = 'Adicionar refeição';
+  static const goHome = 'Voltar para o início';
 
   static const errorSelectProtocol = 'Selecione um protocolo.';
   static const errorActiveSession = 'Já existe um jejum ativo.';

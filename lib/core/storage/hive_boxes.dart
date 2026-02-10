@@ -2,7 +2,7 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import '../../features/fasting/domain/fasting_protocol.dart';
 import '../../features/fasting/domain/fasting_session.dart';
-import '../../features/meals/domain/meal_entry.dart';
+import '../../features/meals/domain/meal.dart';
 
 class HiveBoxes {
   static const String fastingProtocolsBox = 'fasting_protocols';
@@ -13,7 +13,7 @@ class HiveBoxes {
   static late Box<FastingProtocol> fastingProtocols;
   static late Box<FastingSession> fastingSessions;
   static late Box<String> settings;
-  static late Box<MealEntry> meals;
+  static late Box<Meal> meals;
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -28,7 +28,7 @@ class HiveBoxes {
       validate: true,
     );
     settings = await _openBoxSafe<String>(settingsBox);
-    meals = await _openBoxSafe<MealEntry>(mealsBox, validate: true);
+    meals = await _openBoxSafe<Meal>(mealsBox, validate: true);
   }
 
   static void _registerAdapters() {
@@ -38,8 +38,8 @@ class HiveBoxes {
     if (!Hive.isAdapterRegistered(FastingSessionAdapter.typeKey)) {
       Hive.registerAdapter(FastingSessionAdapter());
     }
-    if (!Hive.isAdapterRegistered(MealEntryAdapter.typeKey)) {
-      Hive.registerAdapter(MealEntryAdapter());
+    if (!Hive.isAdapterRegistered(MealAdapter.typeKey)) {
+      Hive.registerAdapter(MealAdapter());
     }
   }
 
