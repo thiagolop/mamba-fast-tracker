@@ -1,97 +1,184 @@
 # Mamba Fast Tracker
 
-App Flutter focado em controle de jejum intermitente e calorias, com autenticação, persistência local e notificações.
+App Flutter para controle de jejum intermitente e calorias, com autenticação, persistência local e notificações.
 
-## Como rodar o projeto
-1. Instale o Flutter (SDK >= 3.10) e configure o ambiente.
-2. Configure o Firebase:
-   - Rode `flutterfire configure` para gerar `lib/firebase_options.dart`.
-3. Instale as dependências:
-   - `flutter pub get`
-4. Execute:
-   - `flutter run`
+## Screenshot(s)
+> Adicione imagens em `docs/screenshots/` e referencie aqui quando quiser.  
+> Exemplo:
+> ![Dashboard](docs/screenshots/dashboard.png)
 
-Notas:
-- iOS: garanta `iOS Deployment Target >= 15.0` e rode `cd ios && pod install` após configurar o Firebase.
+## Features implementadas
+### MVP
+- Login com Firebase Auth (email/senha)
+- Protocolos de jejum (seleção + persistência)
+- Timer de jejum baseado em timestamps (sem contagem em memória)
+- Notificações locais (início/fim) e FCM configurado
+- CRUD de refeições com calorias (local)
+- Dashboard “Hoje” (calorias + jejum)
+- Histórico de dias com detalhe
+- Gráfico semanal (fl_chart)
 
-## Stack escolhida
+### Polimentos
+- UI refinada e consistente (Material 3)
+- Dark mode (segue sistema + toggle no app)
+- Componentização de widgets
+- Feedback via UiMessage (SnackBar)
+- Tema centralizado (AppTheme)
+
+## Arquitetura escolhida (e por quê)
+Arquitetura por **feature** com separação clara entre `presentation`, `domain` e `data`, além de um `core` para serviços compartilhados.
+
+Motivos:
+- Facilita manutenção e crescimento por módulos
+- Isola regras de negócio (controllers/domain)
+- UI fica “burra” e mais simples de testar
+
+## Estrutura de pastas por feature
+```
+lib/
+  core/
+    notifications/
+    router/
+    storage/
+    theme/
+    time/
+    ui/
+  features/
+    auth/
+      data/
+      domain/
+      presentation/
+    fasting/
+      data/
+      domain/
+      presentation/
+    meals/
+      data/
+      domain/
+      presentation/
+    dashboard/
+      domain/
+      presentation/
+    history/
+      data/
+      domain/
+      presentation/
+```
+
+## Tecnologias e bibliotecas
 - Flutter (Material 3)
-- Firebase Auth (email/senha)
-- Hive CE (persistência local)
-- Riverpod (Notifier/Provider)
-- GoRouter (navegação)
-- flutter_local_notifications + timezone
-- fl_chart (gráficos)
-- Google Fonts (tipografia)
+- Firebase: `firebase_core`, `firebase_auth`, `firebase_messaging`
+- Persistência local: `hive_ce`, `hive_ce_flutter`
+- State management: `flutter_riverpod`
+- Navegação: `go_router`
+- Notificações locais: `flutter_local_notifications`, `timezone`
+- Gráficos: `fl_chart`
+- UI: `google_fonts`
+- Utils: `equatable`, `uuid`, `intl`
 
-## Dark mode
-- Segue o sistema (`ThemeMode.system`) com tema claro/escuro (Material 3).
+## Como rodar localmente
+### Requisitos
+- Flutter SDK >= 3.10
+- Firebase configurado (via FlutterFire)
+- Xcode / Android Studio configurados
 
-## Arquitetura utilizada
-Estrutura por feature + core compartilhado:
-- `lib/core/`: storage, router, theme, time, notifications, ui messages
-- `lib/features/auth/`: autenticação
-- `lib/features/fasting/`: jejum (domínio + engine + controller)
-- `lib/features/meals/`: refeições (CRUD local)
-- `lib/features/dashboard/`: resumo diário + gráfico semanal
-- `lib/features/history/`: histórico por dia
+### Comandos
+```bash
+flutter pub get
+flutterfire configure
+flutter run
+```
 
-Princípios:
-- UI “burra” (apenas renderiza estado e dispara ações)
-- Controllers concentram regras e formatos prontos para a UI
-- Persistência isolada em repositories
-
-## Decisões técnicas
-- Jejum baseado em timestamps persistidos (sem contagem em memória).
-- Persistência local com Hive, key por `userId` para separar dados.
-- Cálculo de métricas (calorias, jejum diário, progresso) centralizado nos controllers.
-- Mensageria de UI unificada via `UiMessage` e listener global.
-- Fallbacks de leitura em adapters para evitar quebra em dados antigos.
-
-## Bibliotecas utilizadas
-Principais dependências do projeto:
-- `firebase_core`, `firebase_auth`, `firebase_messaging`
-- `hive_ce`, `hive_ce_flutter`
-- `flutter_local_notifications`, `timezone`
-- `flutter_riverpod`
-- `go_router`
-- `fl_chart`
-- `google_fonts`
-- `equatable`, `uuid`, `intl`
-
-## Trade-offs considerados
-- Gráfico semanal usa calorias (mais direto) ao invés de tempo de jejum.
-- Cálculo de jejum diário considera a interseção da sessão com o dia; sem histórico remoto.
-- Persistência local (sem sync cloud) para simplificar o MVP.
-- UI simplificada, priorizando clareza e legibilidade.
-- Exact alarms no Android 12+ podem depender da permissão do sistema.
-
-## O que melhoraria com mais tempo
-- Testes de unidade e integração (controllers, repositories, router).
-- Sync opcional com backend (cloud).
-- Metas configuráveis pelo usuário (calorias/jejum).
-- Melhorias de acessibilidade e estados offline.
-- Analytics/telemetria para insights de uso.
-
-## Tempo gasto no desafio
-- `16 horas`
-
-## Como rodar testes
-- `flutter test`
-
-## CI: GitHub Actions
-- Pipeline simples com `flutter analyze` e `flutter test` em push/PR.
-
-## Como gerar APK
-1. `flutter clean && flutter pub get`
-2. `flutter build apk --release`
-3. Saída: `build/app/outputs/flutter-apk/app-release.apk`
-
-## Notas Android (permissões)
+## Configuração Android / iOS
+### Android
+Em `android/app/src/main/AndroidManifest.xml`:
 - `POST_NOTIFICATIONS` (Android 13+)
 - `SCHEDULE_EXACT_ALARM` (Android 12+)
-- O app solicita permissão de notificações no runtime via plugin.
 
-## Link para executar o projeto
-- https://docs.flutter.dev/get-started/install
-- https://docs.flutter.dev/cookbook/installation/run
+O app solicita permissão de notificação no runtime via `flutter_local_notifications`.
+
+### iOS
+- `iOS Deployment Target >= 15.0`
+- Permissões locais configuradas via `DarwinInitializationSettings`
+- Push notifications via FCM (Firebase Messaging)
+
+## Funcionalidades do desafio e como foram atendidas
+- **Login (Firebase Auth)**: login/cadastro com validação no controller.
+- **Protocolos de jejum**: seleção persistida em Hive.
+- **Timer persistido**: timestamps salvos e recalculados a cada tick.
+- **Notificações locais + FCM**: início/fim de jejum + suporte FCM.
+- **Refeições CRUD**: criar/editar/excluir refeições locais por userId.
+- **Cálculo diário**: total de calorias e tempo de jejum do dia.
+- **Histórico**: lista de últimos dias + detalhe com refeições.
+- **Gráfico semanal**: barras com `fl_chart` (calorias).
+
+## Persistência de dados (Hive)
+- `fasting_sessions`: sessões (inclui encerradas)
+- `fasting_protocols`: protocolos padrão
+- `meals`: refeições por userId
+- `settings`: preferências (theme, sessão ativa, token FCM)
+
+## UI/UX refinado
+- **Dark Mode** com `ThemeMode.system` + toggle
+- UI “burra”: sem lógica de regras em widgets
+- Componentização (`widgets/` por feature)
+- Feedback via `UiMessage` e listener global
+
+## Testes
+- Unit tests em `test/`:
+  - `fasting_session_test.dart` (elapsed/remaining)
+  - `calories_aggregator_test.dart` (totais por dia)
+  - `weekly_chart_service_test.dart` (7 pontos)
+
+Rodar:
+```bash
+flutter test
+```
+
+## CI/CD
+GitHub Actions configurado em `.github/workflows/flutter.yml`:
+- `flutter pub get`
+- `flutter analyze`
+- `flutter test`
+
+Rodar localmente:
+```bash
+flutter analyze
+flutter test
+```
+
+## Build Android
+```bash
+flutter clean && flutter pub get
+flutter build apk --release
+```
+Saída:
+```
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+Para AAB:
+```bash
+flutter build appbundle --release
+```
+
+## Trade-offs e próximos passos
+Trade-offs:
+- Gráfico semanal focado em calorias (mais direto para o MVP).
+- Persistência local sem sync remoto.
+- Sem analytics/crashlytics.
+
+Se tivesse mais tempo:
+- Mais testes automatizados (widgets + integração)
+- Feature flags e experimentos
+- Analytics + Crashlytics
+- Fluxo de distribuição no Play Console (internal test)
+
+## Tempo gasto no desafio
+- **16 horas**
+
+## Possíveis melhorias futuras
+- Metas configuráveis pelo usuário
+- Exportação de dados
+- Cloud sync opcional
+- Widgets/Shortcuts
