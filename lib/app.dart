@@ -17,7 +17,7 @@ class App extends ConsumerWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        textTheme: GoogleFonts.interTextTheme(baseTextTheme),
+        textTheme: GoogleFonts.manropeTextTheme(baseTextTheme),
         cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
@@ -28,7 +28,7 @@ class App extends ConsumerWidget {
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(52),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(24),
             ),
           ),
         ),
@@ -36,7 +36,7 @@ class App extends ConsumerWidget {
           style: ElevatedButton.styleFrom(
             minimumSize: const Size.fromHeight(52),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(24),
             ),
           ),
         ),
