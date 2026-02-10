@@ -75,6 +75,7 @@ class FastingRepository {
 
   Future<List<FastingSession>> listSessionsForUser(String userId) async {
     final items = <FastingSession>[];
+    final activeRef = HiveBoxes.settings.get(_activeKey(userId));
     final entries = HiveBoxes.fastingSessions.toMap().entries;
     for (final entry in entries) {
       final key = entry.key;
@@ -85,7 +86,9 @@ class FastingRepository {
       }
       if (session.userId.isEmpty &&
           key is String &&
-          key.startsWith('$userId:')) {
+          (key.startsWith('$userId:') ||
+              key == activeRef ||
+              session.id == activeRef)) {
         items.add(session.copyWith(userId: userId));
       }
     }

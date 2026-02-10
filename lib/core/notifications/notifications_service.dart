@@ -94,6 +94,17 @@ class NotificationsService {
         >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final android = _local.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        final granted = await android?.requestNotificationsPermission();
+        debugPrint('LOCAL: Android notifications permission -> $granted');
+      } catch (e) {
+        debugPrint('LOCAL: Android permission request failed -> $e');
+      }
+    }
+
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       try {
         final settings = await _messaging.requestPermission(
@@ -249,15 +260,19 @@ class NotificationsService {
       ),
     );
 
-    await _local.zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      scheduledDate: scheduled,
-      notificationDetails: details,
-      payload: payload,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+    try {
+      await _local.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduled,
+        notificationDetails: details,
+        payload: payload,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (e) {
+      debugPrint('LOCAL: schedule failed -> $e');
+    }
   }
 }
 

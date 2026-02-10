@@ -125,7 +125,7 @@ class MealsController extends Notifier<MealsUiState> {
   MealsUiState build() {
     state = MealsUiState.initial();
     Future.microtask(_loadToday);
-    ref.listen(mealsChangesProvider, (_, __) {
+    ref.listen(mealsChangesProvider, (previous, next) {
       _loadForDate(DateTime.now());
     });
     return state;
@@ -155,7 +155,7 @@ class MealsController extends Notifier<MealsUiState> {
         dateKey: dateKey,
         dateLabel: _formatDate(date),
         totalCalories: totalCalories,
-        totalCaloriesLabel: '${totalCalories} kcal',
+        totalCaloriesLabel: '$totalCalories kcal',
         items: items.map(_mapMeal).toList(),
         screenError: null,
       );

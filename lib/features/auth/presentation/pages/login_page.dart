@@ -67,7 +67,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final canSubmit = state.canSubmit && !state.isLoading;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -90,7 +90,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               AuthStrings.title,
                               style: textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1C1C1C),
+                                color: colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -98,14 +98,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               AuthStrings.subtitle,
                               style: textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w400,
-                                color: const Color(0xFF1C1C1C),
+                                color: colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               AuthStrings.description,
                               style: textTheme.bodyMedium?.copyWith(
-                                color: const Color(0xFF6F6F6F),
+                                color: colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -207,7 +207,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       Text(
                         AuthStrings.privacyHelper,
                         style: textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF8A8A8A),
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -218,7 +218,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           Text(
                             AuthStrings.noAccount,
                             style: textTheme.bodyMedium?.copyWith(
-                              color: const Color(0xFF6F6F6F),
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                           GestureDetector(

@@ -98,14 +98,14 @@ class _FastingPageState extends ConsumerState<FastingPage> {
                     Center(
                       child: ProgressRing(progress: state.progress),
                     ),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () => context.push('/meals'),
-                      icon: const Icon(Icons.restaurant_outlined),
-                      label: const Text(FastingStrings.addMeal),
-                    ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/meals'),
+                icon: const Icon(Icons.restaurant_outlined),
+                label: const Text(FastingStrings.addMeal),
               ),
               const SizedBox(height: 16),
               if (state.screenError != null)
@@ -148,7 +148,8 @@ class _FastingPageState extends ConsumerState<FastingPage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: state.selectedProtocol?.id,
+                      key: ValueKey(state.selectedProtocol?.id),
+                      initialValue: state.selectedProtocol?.id,
                       items: state.protocols
                           .map(
                             (item) => DropdownMenuItem(

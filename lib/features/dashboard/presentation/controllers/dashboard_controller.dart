@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/time/clock.dart';
 import '../../../../core/time/date_key.dart';
@@ -12,6 +13,7 @@ import '../../../fasting/domain/fasting_session.dart';
 import '../../../meals/data/meals_repository.dart';
 import '../../../meals/domain/meal.dart';
 import '../../domain/weekly_chart_item.dart';
+import '../../domain/weekly_chart_service.dart';
 import '../dashboard_strings.dart';
 
 class DashboardUiState extends Equatable {
@@ -24,6 +26,7 @@ class DashboardUiState extends Equatable {
     required this.statusLabel,
     required this.isOnTrack,
     required this.weeklyData,
+    required this.recentFastingData,
     this.screenError,
     this.uiMessage,
   });
@@ -36,6 +39,7 @@ class DashboardUiState extends Equatable {
   final String statusLabel;
   final bool isOnTrack;
   final List<WeeklyChartItem> weeklyData;
+  final List<WeeklyChartItem> recentFastingData;
   final String? screenError;
   final UiMessage? uiMessage;
 
@@ -45,10 +49,11 @@ class DashboardUiState extends Equatable {
       todayCaloriesValue: 0,
       todayFastingValue: Duration.zero,
       todayCaloriesLabel: '0 kcal',
-      todayFastingLabel: '0h 0m',
+      todayFastingLabel: '00:00:00',
       statusLabel: DashboardStrings.statusOnTrack,
       isOnTrack: true,
       weeklyData: const [],
+      recentFastingData: const [],
     );
   }
 
@@ -61,6 +66,7 @@ class DashboardUiState extends Equatable {
     String? statusLabel,
     bool? isOnTrack,
     List<WeeklyChartItem>? weeklyData,
+    List<WeeklyChartItem>? recentFastingData,
     String? screenError,
     UiMessage? uiMessage,
   }) {
@@ -75,6 +81,7 @@ class DashboardUiState extends Equatable {
       statusLabel: statusLabel ?? this.statusLabel,
       isOnTrack: isOnTrack ?? this.isOnTrack,
       weeklyData: weeklyData ?? this.weeklyData,
+      recentFastingData: recentFastingData ?? this.recentFastingData,
       screenError: screenError,
       uiMessage: uiMessage,
     );
@@ -90,6 +97,7 @@ class DashboardUiState extends Equatable {
     statusLabel,
     isOnTrack,
     weeklyData,
+    recentFastingData,
     screenError,
     uiMessage,
   ];
@@ -118,8 +126,8 @@ class DashboardController extends Notifier<DashboardUiState> {
     state = DashboardUiState.initial();
     Future.microtask(_load);
     ref.onDispose(_stopTicker);
-    ref.listen(mealsChangesProvider, (_, _) => _load());
-    ref.listen(fastingSessionsChangesProvider, (_, _) => _load());
+    ref.listen(mealsChangesProvider, (previous, next) => _load());
+    ref.listen(fastingSessionsChangesProvider, (previous, next) => _load());
     return state;
   }
 
@@ -144,13 +152,22 @@ class DashboardController extends Notifier<DashboardUiState> {
         todayKey,
       );
       final todayCalories = _sumCalories(todayMeals);
-      final todayFasting = await _fastingDurationForDay(now);
+      final activeSession =
+          await _fastingRepository.getActiveSession(_userId);
+      final todayFasting = await _fastingDurationForDay(
+        now,
+        activeSession: activeSession,
+      );
 
       final isOnTrack =
           todayCalories <= meta.metaCalories &&
           todayFasting >= meta.metaFasting;
 
       final weekly = await _weeklyCalories(now);
+      final recentFasting = await _recentFastingSeries(
+        now,
+        activeSession: activeSession,
+      );
 
       state = state.copyWith(
         isLoading: false,
@@ -163,6 +180,7 @@ class DashboardController extends Notifier<DashboardUiState> {
             : DashboardStrings.statusOffTrack,
         isOnTrack: isOnTrack,
         weeklyData: weekly,
+        recentFastingData: recentFasting,
         screenError: null,
       );
 
@@ -176,9 +194,8 @@ class DashboardController extends Notifier<DashboardUiState> {
   }
 
   Future<void> _syncTicker() async {
-    final active = await _fastingRepository.getActiveSession(_userId);
-    if (active != null &&
-        active.status == FastingSessionStatus.running) {
+    final active = await _findRunningSession();
+    if (active != null) {
       _startTicker();
     } else {
       _stopTicker();
@@ -201,11 +218,8 @@ class DashboardController extends Notifier<DashboardUiState> {
     if (_isRefreshing) return;
     _isRefreshing = true;
     try {
-      final active = await _fastingRepository.getActiveSession(
-        _userId,
-      );
-      if (active == null ||
-          active.status != FastingSessionStatus.running) {
+      final active = await _findRunningSession();
+      if (active == null) {
         _stopTicker();
         return;
       }
@@ -214,10 +228,18 @@ class DashboardController extends Notifier<DashboardUiState> {
       final meta = _metaTargets ?? await _resolveMeta();
       _metaTargets ??= meta;
 
-      final todayFasting = await _fastingDurationForDay(now);
+      final todayFasting = await _fastingDurationForDay(
+        now,
+        activeSession: active,
+      );
       final isOnTrack =
           state.todayCaloriesValue <= meta.metaCalories &&
           todayFasting >= meta.metaFasting;
+
+      final recentFasting = await _recentFastingSeries(
+        now,
+        activeSession: active,
+      );
 
       state = state.copyWith(
         todayFastingValue: todayFasting,
@@ -226,6 +248,7 @@ class DashboardController extends Notifier<DashboardUiState> {
             ? DashboardStrings.statusOnTrack
             : DashboardStrings.statusOffTrack,
         isOnTrack: isOnTrack,
+        recentFastingData: recentFasting,
       );
     } finally {
       _isRefreshing = false;
@@ -243,43 +266,64 @@ class DashboardController extends Notifier<DashboardUiState> {
 
   Future<List<WeeklyChartItem>> _weeklyCalories(DateTime now) async {
     final meals = await _mealsRepository.listMealsForUser(_userId);
-    final totalsByKey = <String, int>{};
-    for (final meal in meals) {
-      totalsByKey.update(
-        meal.dateKey,
-        (value) => value + meal.calories,
-        ifAbsent: () => meal.calories,
-      );
-    }
+    return WeeklyChartService.buildCaloriesSeries(now: now, meals: meals);
+  }
 
-    final points = <WeeklyChartItem>[];
-    for (var i = 6; i >= 0; i--) {
-      final date = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(Duration(days: i));
-      final key = dateKeyFromDate(date);
-      final value = (totalsByKey[key] ?? 0).toDouble();
-      points.add(
-        WeeklyChartItem(
-          date: date,
-          label: _weekdayLabel(date.weekday),
-          value: value,
-        ),
-      );
+  Future<FastingSession?> _findRunningSession() async {
+    final sessions =
+        await _fastingRepository.listSessionsForUser(_userId);
+    for (final session in sessions) {
+      if (session.status == FastingSessionStatus.running) {
+        return session;
+      }
     }
-    return points;
+    return null;
+  }
+
+  Future<List<WeeklyChartItem>> _recentFastingSeries(
+    DateTime now, {
+    FastingSession? activeSession,
+  }) async {
+    final sessions = await _fastingRepository.listSessionsForUser(_userId);
+    final active = activeSession;
+    if (active != null && !sessions.any((item) => item.id == active.id)) {
+      sessions.add(active);
+    }
+    if (sessions.isEmpty) return const [];
+
+    sessions.sort((a, b) => b.startAt.compareTo(a.startAt));
+    final recent = sessions.take(7).toList().reversed;
+
+    return recent
+        .map(
+          (session) {
+            final duration = session.elapsed(now);
+            final hours = duration.inMinutes / 60.0;
+            return WeeklyChartItem(
+              date: session.startAt,
+              label: DateFormat('dd/MM').format(session.startAt),
+              value: double.parse(hours.toStringAsFixed(1)),
+            );
+          },
+        )
+        .toList();
   }
 
   int _sumCalories(List<Meal> meals) {
     return meals.fold<int>(0, (total, item) => total + item.calories);
   }
 
-  Future<Duration> _fastingDurationForDay(DateTime date) async {
+  Future<Duration> _fastingDurationForDay(
+    DateTime date, {
+    FastingSession? activeSession,
+  }) async {
     final sessions = await _fastingRepository.listSessionsForUser(
       _userId,
     );
+    final active = activeSession;
+    if (active != null && !sessions.any((item) => item.id == active.id)) {
+      sessions.add(active);
+    }
     if (sessions.isEmpty) return Duration.zero;
 
     final dayStart = startOfDay(date);
@@ -329,26 +373,6 @@ class DashboardController extends Notifier<DashboardUiState> {
     return '$h:$m:$s';
   }
 
-  String _weekdayLabel(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'S';
-      case DateTime.tuesday:
-        return 'T';
-      case DateTime.wednesday:
-        return 'Q';
-      case DateTime.thursday:
-        return 'Q';
-      case DateTime.friday:
-        return 'S';
-      case DateTime.saturday:
-        return 'S';
-      case DateTime.sunday:
-        return 'D';
-      default:
-        return '';
-    }
-  }
 }
 
 class _MetaTargets {

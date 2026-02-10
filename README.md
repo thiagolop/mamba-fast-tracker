@@ -24,6 +24,9 @@ Notas:
 - fl_chart (gráficos)
 - Google Fonts (tipografia)
 
+## Dark mode
+- Segue o sistema (`ThemeMode.system`) com tema claro/escuro (Material 3).
+
 ## Arquitetura utilizada
 Estrutura por feature + core compartilhado:
 - `lib/core/`: storage, router, theme, time, notifications, ui messages
@@ -61,6 +64,7 @@ Principais dependências do projeto:
 - Cálculo de jejum diário considera a interseção da sessão com o dia; sem histórico remoto.
 - Persistência local (sem sync cloud) para simplificar o MVP.
 - UI simplificada, priorizando clareza e legibilidade.
+- Exact alarms no Android 12+ podem depender da permissão do sistema.
 
 ## O que melhoraria com mais tempo
 - Testes de unidade e integração (controllers, repositories, router).
@@ -70,7 +74,23 @@ Principais dependências do projeto:
 - Analytics/telemetria para insights de uso.
 
 ## Tempo gasto no desafio
-- **Preencher**: `___ horas`
+- `16 horas`
+
+## Como rodar testes
+- `flutter test`
+
+## CI: GitHub Actions
+- Pipeline simples com `flutter analyze` e `flutter test` em push/PR.
+
+## Como gerar APK
+1. `flutter clean && flutter pub get`
+2. `flutter build apk --release`
+3. Saída: `build/app/outputs/flutter-apk/app-release.apk`
+
+## Notas Android (permissões)
+- `POST_NOTIFICATIONS` (Android 13+)
+- `SCHEDULE_EXACT_ALARM` (Android 12+)
+- O app solicita permissão de notificações no runtime via plugin.
 
 ## Link para executar o projeto
 - https://docs.flutter.dev/get-started/install

@@ -133,8 +133,8 @@ class HistoryController extends Notifier<HistoryUiState> {
     state = HistoryUiState.initial();
     Future.microtask(_load);
 
-    ref.listen(mealsChangesProvider, (_, _) => _load());
-    ref.listen(fastingSessionsChangesProvider, (_, _) => _load());
+    ref.listen(mealsChangesProvider, (previous, next) => _load());
+    ref.listen(fastingSessionsChangesProvider, (previous, next) => _load());
     return state;
   }
 

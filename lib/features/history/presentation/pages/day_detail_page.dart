@@ -119,22 +119,24 @@ class _DayDetailPageState extends ConsumerState<DayDetailPage> {
                     const SizedBox(height: 8),
                     Expanded(
                       child: state.selectedMeals.isEmpty
-                          ? Center(
-                              child: Text(
-                                HistoryStrings.emptyList,
+                              ? Center(
+                                  child: Text(
+                                    HistoryStrings.emptyList,
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium
                                     ?.copyWith(
-                                      color: Colors.grey.shade600,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                     ),
                               ),
                             )
-                          : ListView.separated(
-                              itemCount: state.selectedMeals.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(height: 8),
-                              itemBuilder: (context, index) {
+                              : ListView.separated(
+                                  itemCount: state.selectedMeals.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (context, index) {
                                 final meal =
                                     state.selectedMeals[index];
                                 return Card(

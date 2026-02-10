@@ -11,4 +11,7 @@ class DashboardStrings {
   static const weeklySubtitle = 'Calorias';
   static const openHistory = 'Ver histórico';
   static const errorLoad = 'Não foi possível carregar o resumo.';
+  static const toggleTheme = 'Alternar tema';
+  static const recentFastingTitle = 'Últimos jejuns';
+  static const recentFastingSubtitle = 'Horas de jejum';
 }
