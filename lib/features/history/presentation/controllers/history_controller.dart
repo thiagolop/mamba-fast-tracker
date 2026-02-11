@@ -232,7 +232,7 @@ class HistoryController extends Notifier<HistoryUiState> {
       final summaries = await _historyRepository.listLastDays(
         userId: userId,
         now: now,
-        days: 14,
+        days: 7,
         metaCalories: meta.metaCalories,
         metaFasting: meta.metaFasting,
       );

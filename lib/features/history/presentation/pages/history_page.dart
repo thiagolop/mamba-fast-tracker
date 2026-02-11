@@ -14,7 +14,14 @@ class HistoryPage extends ConsumerWidget {
     final state = ref.watch(historyControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(HistoryStrings.title)),
+      appBar: AppBar(
+        title: const Text(HistoryStrings.title),
+        leading: IconButton(
+          onPressed: () => context.go('/dashboard'),
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
