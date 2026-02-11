@@ -3,8 +3,7 @@
 App Flutter para controle de jejum intermitente e calorias, com autenticação, persistência local e notificações.
 
 ## Screenshot(s)
-![Uploading ChatGPT Image 11 de fev. de 2026, 11_34_00.png…]()
-
+<img width="1536" height="1024" alt="ChatGPT Image 11 de fev  de 2026, 11_34_00" src="https://github.com/user-attachments/assets/a32b109e-cc71-47b2-be1b-6b1a661217b5" />
 
 
 ## Features implementadas
