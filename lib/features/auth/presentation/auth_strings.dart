@@ -11,10 +11,14 @@ class AuthStrings {
 
   static const primaryButton = 'Entrar no meu jejum';
   static const primaryButtonLoading = 'Entrando…';
+  static const primaryButtonSignUp = 'Criar minha conta';
+  static const primaryButtonSignUpLoading = 'Criando conta…';
 
   static const privacyHelper = 'Seus dados ficam seguros com você.';
   static const noAccount = 'Ainda não tem conta? ';
   static const createNow = 'Criar agora';
+  static const hasAccount = 'Já tem conta? ';
+  static const loginNow = 'Entrar';
 
   static const validationEmailEmpty = 'Digite seu e-mail.';
   static const validationEmail = 'Digite um e-mail válido.';

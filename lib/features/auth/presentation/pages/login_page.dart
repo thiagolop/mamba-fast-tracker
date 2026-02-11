@@ -65,6 +65,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final textTheme = Theme.of(context).textTheme;
 
     final canSubmit = state.canSubmit && !state.isLoading;
+    final primaryLabel = _isRegister
+        ? AuthStrings.primaryButtonSignUp
+        : AuthStrings.primaryButton;
+    final loadingLabel = _isRegister
+        ? AuthStrings.primaryButtonSignUpLoading
+        : AuthStrings.primaryButtonLoading;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -174,7 +180,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                       ),
                                       const SizedBox(width: 12),
                                       Text(
-                                        AuthStrings.primaryButtonLoading,
+                                        loadingLabel,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -182,7 +188,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     ],
                                   )
                                 : Text(
-                                    AuthStrings.primaryButton,
+                                    primaryLabel,
                                     key: const ValueKey('idle'),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
@@ -216,7 +222,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            AuthStrings.noAccount,
+                            _isRegister
+                                ? AuthStrings.hasAccount
+                                : AuthStrings.noAccount,
                             style: textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -224,10 +232,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           GestureDetector(
                             onTap: state.isLoading
                                 ? null
-                                : () =>
-                                    setState(() => _isRegister = !_isRegister),
+                                : () => setState(() {
+                                      _isRegister = !_isRegister;
+                                    }),
                             child: Text(
-                              AuthStrings.createNow,
+                              _isRegister
+                                  ? AuthStrings.loginNow
+                                  : AuthStrings.createNow,
                               style: textTheme.bodyMedium?.copyWith(
                                 color: colorScheme.primary,
                                 fontWeight: FontWeight.w600,

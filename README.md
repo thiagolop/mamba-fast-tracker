@@ -24,7 +24,7 @@ App Flutter para controle de jejum intermitente e calorias, com autenticação, 
 - Feedback via UiMessage (SnackBar)
 - Tema centralizado (AppTheme)
 
-## Arquitetura escolhida (e por quê)
+## Arquitetura utilizada
 Arquitetura por **feature** com separação clara entre `presentation`, `domain` e `data`, além de um `core` para serviços compartilhados.
 
 Motivos:
@@ -64,18 +64,25 @@ lib/
       presentation/
 ```
 
-## Tecnologias e bibliotecas
+## Stack escolhida
 - Flutter (Material 3)
-- Firebase: `firebase_core`, `firebase_auth`, `firebase_messaging`
-- Persistência local: `hive_ce`, `hive_ce_flutter`
-- State management: `flutter_riverpod`
-- Navegação: `go_router`
-- Notificações locais: `flutter_local_notifications`, `timezone`
-- Gráficos: `fl_chart`
-- UI: `google_fonts`
-- Utils: `equatable`, `uuid`, `intl`
+- Firebase (Auth + Messaging)
+- Hive (persistência local)
+- Riverpod (state management)
+- GoRouter (navegação)
+- fl_chart (gráficos)
 
-## Como rodar localmente
+## Bibliotecas utilizadas
+- `firebase_core`, `firebase_auth`, `firebase_messaging`
+- `hive_ce`, `hive_ce_flutter`
+- `flutter_riverpod`
+- `go_router`
+- `flutter_local_notifications`, `timezone`
+- `fl_chart`
+- `google_fonts`
+- `equatable`, `uuid`, `intl`
+
+## Como rodar o projeto
 ### Requisitos
 - Flutter SDK >= 3.10
 - Firebase configurado (via FlutterFire)
@@ -161,13 +168,18 @@ Para AAB:
 flutter build appbundle --release
 ```
 
-## Trade-offs e próximos passos
-Trade-offs:
+## Decisões técnicas
+- Timestamps como fonte de verdade do jejum (confiável com app fechado).
+- Persistência local via Hive para simplicidade e performance offline.
+- UI “burra” com regras no controller/domain.
+- Arquitetura por feature para facilitar evolução modular.
+
+## Trade-offs considerados
 - Gráfico semanal focado em calorias (mais direto para o MVP).
 - Persistência local sem sync remoto.
 - Sem analytics/crashlytics.
 
-Se tivesse mais tempo:
+## O que melhoraria com mais tempo
 - Mais testes automatizados (widgets + integração)
 - Feature flags e experimentos
 - Analytics + Crashlytics
