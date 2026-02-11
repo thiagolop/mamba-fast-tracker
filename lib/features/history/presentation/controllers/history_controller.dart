@@ -236,10 +236,14 @@ class HistoryController extends Notifier<HistoryUiState> {
         metaCalories: meta.metaCalories,
         metaFasting: meta.metaFasting,
       );
+      final filtered = summaries.where((summary) {
+        return summary.caloriesTotal > 0 ||
+            summary.fastingTotal > Duration.zero;
+      }).toList();
 
       state = state.copyWith(
         isLoading: false,
-        days: summaries.map(_mapSummary).toList(),
+        days: filtered.map(_mapSummary).toList(),
         screenError: null,
       );
     } catch (_) {
