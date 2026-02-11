@@ -36,11 +36,9 @@ class DashboardPage extends ConsumerWidget {
                   if (state.screenError != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
+                      child: _buildScreenError(
+                        context,
                         state.screenError!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
                       ),
                     ),
                   Card(
@@ -105,6 +103,20 @@ class DashboardPage extends ConsumerWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          if (state.metaLabel.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              state.metaLabel,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
                           const SizedBox(height: 8),
                           FilledButton(
                             onPressed: () => context.go('/meals'),
@@ -186,8 +198,7 @@ class DashboardPage extends ConsumerWidget {
                           const SizedBox(height: 12),
                           WeeklyChart(
                             points: state.recentFastingData,
-                            valueFormatter: (item) =>
-                                '${item.value.toStringAsFixed(1)} h',
+                            valueFormatter: state.formatFastingChartValue,
                           ),
                         ],
                       ),
@@ -210,5 +221,32 @@ class DashboardPage extends ConsumerWidget {
             ? Icons.dark_mode
             : Icons.light_mode;
     }
+  }
+
+  Widget _buildScreenError(BuildContext context, String message) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/storage/hive_boxes.dart';
 import '../../../../core/time/clock.dart';
 import '../../../../core/time/date_key.dart';
 import '../../../../core/ui/ui_message.dart';
@@ -126,15 +127,27 @@ class HistoryController extends Notifier<HistoryUiState> {
   FastingRepository get _fastingRepository =>
       ref.read(fastingRepositoryProvider);
   Clock get _clock => ref.read(clockProvider);
-  String get _userId => ref.read(historyUserIdProvider);
+  String? get _userIdOrNull =>
+      ref.read(firebaseAuthProvider).currentUser?.uid;
 
   @override
   HistoryUiState build() {
     state = HistoryUiState.initial();
-    Future.microtask(_load);
+    // On cold start, auth may not be ready; wait for a user before loading.
+    ref.listen(authStateChangesProvider, (previous, next) {
+      final user = next.asData?.value;
+      if (user == null) {
+        state = HistoryUiState.initial();
+        return;
+      }
+      _load();
+    }, fireImmediately: true);
 
     ref.listen(mealsChangesProvider, (previous, next) => _load());
-    ref.listen(fastingSessionsChangesProvider, (previous, next) => _load());
+    ref.listen(
+      fastingSessionsChangesProvider,
+      (previous, next) => _load(),
+    );
     return state;
   }
 
@@ -143,6 +156,19 @@ class HistoryController extends Notifier<HistoryUiState> {
   }
 
   Future<void> loadDay(String dateKey) async {
+    if (HiveBoxes.hasStorageIssue) {
+      state = state.copyWith(
+        isLoading: false,
+        screenError: HiveBoxes.storageErrorMessage,
+        uiMessage: null,
+      );
+      return;
+    }
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      state = state.copyWith(isLoading: true, screenError: null);
+      return;
+    }
     try {
       state = state.copyWith(isLoading: true, screenError: null);
       final now = _clock.now();
@@ -150,7 +176,7 @@ class HistoryController extends Notifier<HistoryUiState> {
       final date = dateFromKey(dateKey);
 
       final summary = await _historyRepository.buildSummaryForDay(
-        userId: _userId,
+        userId: userId,
         date: date,
         now: now,
         metaCalories: meta.metaCalories,
@@ -158,7 +184,7 @@ class HistoryController extends Notifier<HistoryUiState> {
       );
 
       final meals = await _historyRepository.listMealsForDay(
-        _userId,
+        userId,
         dateKey,
       );
 
@@ -185,13 +211,26 @@ class HistoryController extends Notifier<HistoryUiState> {
   }
 
   Future<void> _load() async {
+    if (HiveBoxes.hasStorageIssue) {
+      state = state.copyWith(
+        isLoading: false,
+        screenError: HiveBoxes.storageErrorMessage,
+        uiMessage: null,
+      );
+      return;
+    }
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      state = state.copyWith(isLoading: true, screenError: null);
+      return;
+    }
     try {
       state = state.copyWith(isLoading: true, screenError: null);
       final now = _clock.now();
       final meta = await _resolveMeta();
 
       final summaries = await _historyRepository.listLastDays(
-        userId: _userId,
+        userId: userId,
         now: now,
         days: 14,
         metaCalories: meta.metaCalories,
@@ -212,8 +251,15 @@ class HistoryController extends Notifier<HistoryUiState> {
   }
 
   Future<_MetaTargets> _resolveMeta() async {
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      return _MetaTargets(
+        metaCalories: 2000,
+        metaFasting: const Duration(hours: 16),
+      );
+    }
     final protocol = await _fastingRepository.getSelectedProtocol(
-      _userId,
+      userId,
     );
     final metaFasting =
         protocol?.fastingDuration ?? const Duration(hours: 16);

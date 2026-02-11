@@ -109,30 +109,7 @@ class _FastingPageState extends ConsumerState<FastingPage> {
               ),
               const SizedBox(height: 16),
               if (state.screenError != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          state.screenError!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildScreenError(context, state.screenError!),
               const SizedBox(height: 16),
               SectionCard(
                 key: _protocolSectionKey,
@@ -203,6 +180,33 @@ class _FastingPageState extends ConsumerState<FastingPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildScreenError(BuildContext context, String message) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

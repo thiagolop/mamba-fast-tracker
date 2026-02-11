@@ -23,11 +23,9 @@ class HistoryPage extends ConsumerWidget {
               if (state.screenError != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
+                  child: _buildScreenError(
+                    context,
                     state.screenError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
                   ),
                 ),
               Expanded(
@@ -69,6 +67,33 @@ class HistoryPage extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildScreenError(BuildContext context, String message) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

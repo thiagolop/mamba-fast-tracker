@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/storage/hive_boxes.dart';
 import '../../../../core/time/clock.dart';
 import '../../../../core/time/date_key.dart';
 import '../../../../core/ui/ui_message.dart';
@@ -119,12 +120,25 @@ final currentMealsUserIdProvider = Provider<String>((ref) {
 class MealsController extends Notifier<MealsUiState> {
   MealsRepository get _repository => ref.read(mealsRepositoryProvider);
   Clock get _clock => ref.read(clockProvider);
-  String get _userId => ref.read(currentMealsUserIdProvider);
+  String? get _userIdOrNull =>
+      ref.read(firebaseAuthProvider).currentUser?.uid;
 
   @override
   MealsUiState build() {
     state = MealsUiState.initial();
-    Future.microtask(_loadToday);
+    // On cold start, auth may not be ready; wait for a user before loading.
+    ref.listen(
+      authStateChangesProvider,
+      (previous, next) {
+        final user = next.asData?.value;
+        if (user == null) {
+          state = MealsUiState.initial();
+          return;
+        }
+        _loadForDate(_clock.now());
+      },
+      fireImmediately: true,
+    );
     ref.listen(mealsChangesProvider, (previous, next) {
       _loadForDate(DateTime.now());
     });
@@ -135,16 +149,25 @@ class MealsController extends Notifier<MealsUiState> {
     await _loadForDate(date);
   }
 
-  Future<void> _loadToday() async {
-    await _loadForDate(_clock.now());
-  }
-
   Future<void> _loadForDate(DateTime date) async {
+    if (HiveBoxes.hasStorageIssue) {
+      state = state.copyWith(
+        isLoading: false,
+        screenError: HiveBoxes.storageErrorMessage,
+        uiMessage: null,
+      );
+      return;
+    }
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      state = state.copyWith(isLoading: true, screenError: null);
+      return;
+    }
     try {
       state = state.copyWith(isLoading: true, screenError: null);
 
       final dateKey = dateKeyFromDate(date);
-      final items = await _repository.listMealsForDay(_userId, dateKey);
+      final items = await _repository.listMealsForDay(userId, dateKey);
       final totalCalories = items.fold<int>(
         0,
         (total, item) => total + item.calories,
@@ -171,6 +194,15 @@ class MealsController extends Notifier<MealsUiState> {
     required String name,
     required String caloriesText,
   }) async {
+    if (HiveBoxes.hasStorageIssue) {
+      _setScreenError(HiveBoxes.storageErrorMessage);
+      return false;
+    }
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      _emitError(MealsStrings.errorSave);
+      return false;
+    }
     final calories = int.tryParse(caloriesText.trim());
     final validationOk = _validateForm(name, calories);
     if (!validationOk) return false;
@@ -178,7 +210,7 @@ class MealsController extends Notifier<MealsUiState> {
     state = state.copyWith(isSaving: true, uiMessage: null);
     try {
       await _repository.addMeal(
-        userId: _userId,
+        userId: userId,
         name: name.trim(),
         calories: calories!,
         createdAt: _clock.now(),
@@ -203,6 +235,15 @@ class MealsController extends Notifier<MealsUiState> {
     required String name,
     required String caloriesText,
   }) async {
+    if (HiveBoxes.hasStorageIssue) {
+      _setScreenError(HiveBoxes.storageErrorMessage);
+      return false;
+    }
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      _emitError(MealsStrings.errorSave);
+      return false;
+    }
     final calories = int.tryParse(caloriesText.trim());
     final validationOk = _validateForm(name, calories);
     if (!validationOk) return false;
@@ -210,7 +251,7 @@ class MealsController extends Notifier<MealsUiState> {
     state = state.copyWith(isSaving: true, uiMessage: null);
     try {
       await _repository.updateMeal(
-        userId: _userId,
+        userId: userId,
         mealId: mealId,
         name: name.trim(),
         calories: calories!,
@@ -231,8 +272,17 @@ class MealsController extends Notifier<MealsUiState> {
   }
 
   Future<void> deleteMeal(String mealId) async {
+    if (HiveBoxes.hasStorageIssue) {
+      _setScreenError(HiveBoxes.storageErrorMessage);
+      return;
+    }
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      _emitError(MealsStrings.errorDelete);
+      return;
+    }
     try {
-      await _repository.deleteMeal(_userId, mealId);
+      await _repository.deleteMeal(userId, mealId);
       await _loadForDate(_clock.now());
     } catch (_) {
       _emitError(MealsStrings.errorDelete);
@@ -240,7 +290,9 @@ class MealsController extends Notifier<MealsUiState> {
   }
 
   Future<Meal?> getMealById(String mealId) async {
-    return _repository.getMeal(_userId, mealId);
+    final userId = _userIdOrNull;
+    if (userId == null) return null;
+    return _repository.getMeal(userId, mealId);
   }
 
   void resetFormErrors() {
@@ -293,6 +345,14 @@ class MealsController extends Notifier<MealsUiState> {
     state = state.copyWith(
       isSaving: false,
       uiMessage: UiMessage(type: UiMessageType.error, text: message),
+    );
+  }
+
+  void _setScreenError(String message) {
+    state = state.copyWith(
+      isSaving: false,
+      screenError: message,
+      uiMessage: null,
     );
   }
 }

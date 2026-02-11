@@ -5,6 +5,7 @@ class DashboardStrings {
   static const fastingTotalLabel = 'Tempo de jejum';
   static const statusOnTrack = 'Dentro da meta';
   static const statusOffTrack = 'Fora da meta';
+  static const metaLabelPrefix = 'Meta';
   static const addMeal = 'Adicionar refeição';
   static const openFasting = 'Abrir jejum';
   static const weeklyTitle = 'Últimos 7 dias';

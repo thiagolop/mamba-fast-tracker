@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/notifications/notifications_service.dart';
+import '../../../../core/storage/hive_boxes.dart';
 import '../../../../core/time/clock.dart';
 import '../../../../core/ui/ui_message.dart';
 import '../../../auth/data/auth_repository.dart';
@@ -146,6 +147,7 @@ final currentUserIdProvider = Provider<String>((ref) {
 class FastingController extends Notifier<FastingUiState> {
   Timer? _ticker;
   final Uuid _uuid = const Uuid();
+  bool _waitingForAuth = false;
 
   FastingRepository get _repository => ref.read(fastingRepositoryProvider);
   FastingEngine get _engine => ref.read(fastingEngineProvider);
@@ -153,28 +155,68 @@ class FastingController extends Notifier<FastingUiState> {
   NotificationsService get _notifications =>
       ref.read(notificationsServiceProvider);
   String get _userId => ref.read(currentUserIdProvider);
+  String? get _userIdOrNull => ref.read(firebaseAuthProvider).currentUser?.uid;
 
   @override
   FastingUiState build() {
     state = FastingUiState.initial();
-    Future.microtask(_load);
+    // On cold start the auth session may not be ready yet.
+    // We listen to auth changes and load only when a user is available
+    // to avoid restoring an empty/incorrect fasting state.
+    ref.listen(
+      authStateChangesProvider,
+      (previous, next) {
+        final user = next.asData?.value;
+        if (user == null) {
+          state = FastingUiState.initial();
+          return;
+        }
+        _load();
+      },
+      fireImmediately: true,
+    );
     ref.onDispose(_stopTicker);
     return state;
   }
 
   Future<void> _load() async {
+    if (HiveBoxes.hasStorageIssue) {
+      state = state.copyWith(
+        isLoading: false,
+        screenError: HiveBoxes.storageErrorMessage,
+        uiMessage: null,
+      );
+      _stopTicker();
+      return;
+    }
+    final userId = _userIdOrNull;
+    if (userId == null) {
+      _queueLoadAfterAuth();
+      state = state.copyWith(isLoading: true, screenError: null);
+      return;
+    }
     try {
       state = state.copyWith(isLoading: true, screenError: null);
-
       final protocols = await _repository.listProtocols();
-      final selectedProtocol = await _repository.getSelectedProtocol(
-        _userId,
-      );
-      var session = await _repository.getActiveSession(_userId);
+      FastingProtocol? selectedProtocol =
+          await _repository.getSelectedProtocol(userId);
+      var session = await _repository.getActiveSession(userId);
       final now = _clock.now();
 
       if (session != null && session.remaining(now) == Duration.zero) {
         session = await _completeSession(session, now, notify: true);
+      }
+
+      if (session != null &&
+          (selectedProtocol == null ||
+              selectedProtocol.id != session.protocolId)) {
+        for (final protocol in protocols) {
+          if (protocol.id == session.protocolId) {
+            selectedProtocol = protocol;
+            await _repository.setSelectedProtocol(userId, protocol.id);
+            break;
+          }
+        }
       }
 
       final status = _buildStatus(
@@ -199,10 +241,26 @@ class FastingController extends Notifier<FastingUiState> {
     }
   }
 
+  void _queueLoadAfterAuth() {
+    if (_waitingForAuth) return;
+    _waitingForAuth = true;
+    ref
+        .read(authRepositoryProvider)
+        .authStateChanges()
+        .firstWhere((user) => user != null)
+        .then((_) => _load())
+        .catchError((_) {})
+        .whenComplete(() => _waitingForAuth = false);
+  }
+
   Future<void> startSession() => start();
   Future<void> stopSession() => end();
 
   Future<void> selectProtocol(String protocolId) async {
+    if (HiveBoxes.hasStorageIssue) {
+      _setScreenError(HiveBoxes.storageErrorMessage);
+      return;
+    }
     final session = state.session;
     if (session != null && session.status != FastingSessionStatus.ended) {
       _emitError(FastingStrings.errorChangeProtocol);
@@ -232,6 +290,10 @@ class FastingController extends Notifier<FastingUiState> {
   }
 
   Future<void> start() async {
+    if (HiveBoxes.hasStorageIssue) {
+      _setScreenError(HiveBoxes.storageErrorMessage);
+      return;
+    }
     final protocol = state.selectedProtocol;
     if (protocol == null) {
       _emitError(FastingStrings.errorSelectProtocol);
@@ -276,6 +338,10 @@ class FastingController extends Notifier<FastingUiState> {
   }
 
   Future<void> end() async {
+    if (HiveBoxes.hasStorageIssue) {
+      _setScreenError(HiveBoxes.storageErrorMessage);
+      return;
+    }
     final session = state.session;
     final protocol = state.selectedProtocol;
     if (session == null || protocol == null) return;

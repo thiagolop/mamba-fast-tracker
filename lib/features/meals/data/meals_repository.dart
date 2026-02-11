@@ -11,6 +11,7 @@ class MealsRepository {
   final Uuid _uuid;
 
   Future<List<Meal>> listMealsForUser(String userId) async {
+    await HiveBoxes.restoreSnapshotIfEmpty<Meal>(HiveBoxes.mealsBox);
     final items = HiveBoxes.meals.values
         .where((meal) => meal.userId == userId)
         .toList();
@@ -19,6 +20,7 @@ class MealsRepository {
   }
 
   Future<List<Meal>> listMealsForDay(String userId, String dateKey) async {
+    await HiveBoxes.restoreSnapshotIfEmpty<Meal>(HiveBoxes.mealsBox);
     final items = HiveBoxes.meals.values
         .where(
           (meal) => meal.userId == userId && meal.dateKey == dateKey,
@@ -42,6 +44,8 @@ class MealsRepository {
       createdAt: createdAt,
     );
     await HiveBoxes.meals.put(_key(userId, entry.id), entry);
+    await HiveBoxes.meals.flush();
+    await HiveBoxes.backupBox<Meal>(HiveBoxes.mealsBox);
     return entry;
   }
 
@@ -81,12 +85,16 @@ class MealsRepository {
       dateKey: dateKeyFromDate(current.createdAt),
     );
     await HiveBoxes.meals.put(_key(userId, updated.id), updated);
+    await HiveBoxes.meals.flush();
+    await HiveBoxes.backupBox<Meal>(HiveBoxes.mealsBox);
     return updated;
   }
 
   Future<void> deleteMeal(String userId, String mealId) async {
     await HiveBoxes.meals.delete(_key(userId, mealId));
     await HiveBoxes.meals.delete(mealId);
+    await HiveBoxes.meals.flush();
+    await HiveBoxes.backupBox<Meal>(HiveBoxes.mealsBox);
   }
 
   static String _key(String userId, String mealId) => '$userId:$mealId';

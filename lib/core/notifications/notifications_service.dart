@@ -44,10 +44,7 @@ class NotificationsService {
       _listenTokenRefresh();
       _listenFcmMessages();
       await _handleInitialMessage();
-    } catch (e, st) {
-      debugPrint('NOTIF: init failed -> $e');
-      debugPrint('NOTIF: stack -> $st');
-    }
+    } catch (_) {}
   }
 
   Future<void> _initLocalNotifications() async {
@@ -68,9 +65,7 @@ class NotificationsService {
 
     await _local.initialize(
       settings: settings,
-      onDidReceiveNotificationResponse: (resp) {
-        debugPrint('LOCAL: tapped payload=${resp.payload}');
-      },
+      onDidReceiveNotificationResponse: (_) {},
     );
 
     const channel = AndroidNotificationChannel(
@@ -96,52 +91,41 @@ class NotificationsService {
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       try {
-        final android = _local.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-        final granted = await android?.requestNotificationsPermission();
-        debugPrint('LOCAL: Android notifications permission -> $granted');
-      } catch (e) {
-        debugPrint('LOCAL: Android permission request failed -> $e');
-      }
+        final android = _local
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        await android?.requestNotificationsPermission();
+      } catch (_) {}
     }
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       try {
-        final settings = await _messaging.requestPermission(
+        await _messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
         );
-        debugPrint(
-          'FCM: permission -> ${settings.authorizationStatus}',
-        );
-
         await _messaging.setForegroundNotificationPresentationOptions(
           alert: true,
           badge: true,
           sound: true,
         );
-      } catch (e) {
-        debugPrint('FCM: permission request failed -> $e');
-      }
+      } catch (_) {}
     }
   }
 
   Future<void> _fetchAndStoreToken() async {
     try {
       final token = await _messaging.getToken();
-      debugPrint('FCM: token -> $token');
       if (token != null && token.isNotEmpty) {
         await _saveToken(token);
       }
-    } catch (e) {
-      debugPrint('FCM: getToken failed -> $e');
-    }
+    } catch (_) {}
   }
 
   void _listenTokenRefresh() {
     _messaging.onTokenRefresh.listen((token) async {
-      debugPrint('FCM: token refreshed -> $token');
       if (token.isNotEmpty) {
         await _saveToken(token);
       }
@@ -150,10 +134,6 @@ class NotificationsService {
 
   void _listenFcmMessages() {
     FirebaseMessaging.onMessage.listen((message) {
-      debugPrint(
-        'FCM: onMessage id=${message.messageId} data=${message.data}',
-      );
-
       final title = message.notification?.title;
       final body = message.notification?.body;
       if (title != null || body != null) {
@@ -169,32 +149,21 @@ class NotificationsService {
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      debugPrint(
-        'FCM: onMessageOpenedApp id=${message.messageId} data=${message.data}',
-      );
+      // no-op
     });
   }
 
   Future<void> _handleInitialMessage() async {
     try {
       final message = await _messaging.getInitialMessage();
-      if (message == null) {
-        debugPrint('FCM: getInitialMessage -> null');
-        return;
-      }
-      debugPrint(
-        'FCM: getInitialMessage id=${message.messageId} data=${message.data}',
-      );
-    } catch (e) {
-      debugPrint('FCM: getInitialMessage failed -> $e');
-    }
+      if (message == null) return;
+    } catch (_) {}
   }
 
   Future<void> _saveToken(String token) async {
     try {
       await HiveBoxes.settings.put(tokenStorageKey, token);
-    } catch (e) {
-      debugPrint('FCM: save token failed -> $e');
+    } catch (_) {
       _memoryToken = token;
     }
   }
@@ -270,9 +239,7 @@ class NotificationsService {
         payload: payload,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-    } catch (e) {
-      debugPrint('LOCAL: schedule failed -> $e');
-    }
+    } catch (_) {}
   }
 }
 

@@ -34,18 +34,23 @@ class AuthUiState extends Equatable {
   AuthUiState copyWith({
     bool? isLoading,
     bool? canSubmit,
-    String? emailError,
-    String? passwordError,
-    String? screenError,
-    UiMessage? uiMessage,
+    Object? emailError = _unset,
+    Object? passwordError = _unset,
+    Object? screenError = _unset,
+    Object? uiMessage = _unset,
   }) {
     return AuthUiState(
       isLoading: isLoading ?? this.isLoading,
       canSubmit: canSubmit ?? this.canSubmit,
-      emailError: emailError ?? this.emailError,
-      passwordError: passwordError ?? this.passwordError,
-      screenError: screenError,
-      uiMessage: uiMessage,
+      emailError:
+          emailError == _unset ? this.emailError : emailError as String?,
+      passwordError: passwordError == _unset
+          ? this.passwordError
+          : passwordError as String?,
+      screenError:
+          screenError == _unset ? this.screenError : screenError as String?,
+      uiMessage:
+          uiMessage == _unset ? this.uiMessage : uiMessage as UiMessage?,
     );
   }
 
@@ -59,6 +64,8 @@ class AuthUiState extends Equatable {
         uiMessage,
       ];
 }
+
+const Object _unset = Object();
 
 class AuthController extends Notifier<AuthUiState> {
   String _email = '';
